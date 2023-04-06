@@ -3,6 +3,7 @@
 
 ### Datasets ###
 *.pkl
+*.csv
 data/*
 
 ### Linux ###

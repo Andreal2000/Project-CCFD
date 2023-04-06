@@ -7,30 +7,30 @@ from generator import generate_dataset
 DIR_DATA = "./data"
 
 def generate_all_datasets(force=False):
-    dataset_template = {100: (17500, 35000, 10),
-                        200: (25500, 50000, 10),
-                        300: (35500, 55000, 10),}
+    dataset_template = {100: (2300,  4600, 365),
+                        200: (4500,  9000, 365),
+                        300: (6500, 13000, 365),}
 
     file_names = ("customer", "terminal", "transaction")
 
     for k, v in dataset_template.items():
         path = f"{DIR_DATA}/{k}/"
 
-        if force or not any([os.path.isfile(path+f"{name}.pkl") for name in file_names]):
+        if force or not any([os.path.isfile(f"{path}{name}.csv") for name in file_names]):
             print(f"Generate {k}Mbyte dataset")
 
             datasets = dict(zip(file_names,
                                 generate_dataset(n_customers = v[0],
                                                  n_terminals = v[1],
                                                  nb_days     = v[2], 
-                                                 start_date  = "2018-04-01",
+                                                 start_date  = "2022-01-01",
                                                  r           = 5)))
 
             if not os.path.exists(path):
                 os.makedirs(path)
 
             for name, data in datasets.items():
-                data.to_pickle(path+f"{name}.pkl")
+                data.to_csv(f"{path}{name}.csv")
 
 
 def generate_test_dataset(force=False):
@@ -84,9 +84,9 @@ if __name__ == "__main__":
 
     for i in range(100, 301, 100):
         print(i, "Mbyte dataset")
-        customer_df = pd.read_pickle(f"{DIR_DATA}/{i}/customer.pkl")
-        terminal_df = pd.read_pickle(f"{DIR_DATA}/{i}/terminal.pkl")
-        transaction_df = pd.read_pickle(f"{DIR_DATA}/{i}/transaction.pkl")
+        customer_df = pd.read_csv(f"{DIR_DATA}/{i}/customer.csv")
+        terminal_df = pd.read_csv(f"{DIR_DATA}/{i}/terminal.csv")
+        transaction_df = pd.read_csv(f"{DIR_DATA}/{i}/transaction.csv")
 
         print(customer_df.shape)
         print(terminal_df.shape)
