@@ -5,6 +5,7 @@ from database import Database
 from generator import generate_dataset
 
 DIR_DATA = "./data"
+DIR_OUTPUT = "./output"
 
 def generate_all_datasets(force=False):
     dataset_template = {100: (2300,  4600, 365),
@@ -30,7 +31,7 @@ def generate_all_datasets(force=False):
                 os.makedirs(path)
 
             for name, data in datasets.items():
-                data.to_csv(f"{path}{name}.csv")
+                data.to_csv(f"{path}{name}.csv", index=False)
 
 
 def generate_test_dataset(force=False):
@@ -88,6 +89,6 @@ if __name__ == "__main__":
         terminal_df = pd.read_csv(f"{DIR_DATA}/{i}/terminal.csv")
         transaction_df = pd.read_csv(f"{DIR_DATA}/{i}/transaction.csv")
 
-        print(customer_df.shape)
-        print(terminal_df.shape)
-        print(transaction_df.shape)
+        print(customer_df)
+        print(terminal_df)
+        print(transaction_df)
