@@ -1,5 +1,4 @@
 import os
-import pandas as pd
 
 from database import Database
 from generator import generate_dataset
@@ -7,10 +6,17 @@ from generator import generate_dataset
 DIR_DATA = "./data"
 DIR_OUTPUT = "./output"
 
+if os.path.exists(f"{DIR_OUTPUT}/log.txt"):
+    os.remove(f"{DIR_OUTPUT}/log.txt")
+
+def log(string):
+    open(f"{DIR_OUTPUT}/log.txt", "a").write(f"{string}\n")
+    print(string) 
+
 def generate_all_datasets(force=False):
-    dataset_template = {100: (2300,  4600, 365),
-                        200: (4500,  9000, 365),
-                        300: (6500, 13000, 365),}
+    dataset_template = {100: (2500,  5000, 365),
+                        200: (5000, 10000, 365),
+                        300: (7500, 15000, 365),}
 
     file_names = ("customer", "terminal", "transaction")
 
@@ -33,62 +39,35 @@ def generate_all_datasets(force=False):
             for name, data in datasets.items():
                 data.to_csv(f"{path}{name}.csv", index=False)
 
-
-def generate_test_dataset(force=False):
-    file_names = ("customer", "terminal", "transaction")
-
-    path = f"./data/test/"
-
-    if force or not any([os.path.isfile(path+f"{name}.pkl") for name in file_names]):
-        print(f"Generate test dataset")
-
-        datasets = dict(zip(file_names,
-                            generate_dataset(n_customers = 5000,
-                                             n_terminals = 10000,
-                                             nb_days     = 40, 
-                                             start_date  = "2018-04-01",
-                                             r           = 5)))
-        
-        if not os.path.exists(path):
-            os.makedirs(path)
-
-        for name, data in datasets.items():
-            data.to_pickle(path+f"{name}.pkl")
-
-
 if __name__ == "__main__":
     generate_all_datasets()
-    # generate_test_dataset()
 
-    # See https://neo4j.com/developer/aura-connect-driver/ for Aura specific connection URL.
-    scheme = "neo4j"  # Connecting to Aura, use the "neo4j+s" or "neo4j+ssc" URI scheme
-    host_name = "example.com"
-    port = 7687
-    url = f"{scheme}://{host_name}:{port}"
-    user = "<Username for Neo4j database>"
-    password = "<Password for Neo4j database>"
-    # db = Database(url, user, password)
-    # try:
-    #     customer_df = pd.read_pickle(f"{DIR_DATA}/test/customer.pkl")
-    #     db.insert_customer(customer_df) # 13214 ms
+    for size in range(100, 301, 100):
+        # See https://neo4j.com/developer/aura-connect-driver/ for Aura specific connection URL.
+        scheme = "neo4j"  # Connecting to Aura, use the "neo4j+s" or "neo4j+ssc" URI scheme
+        host_name = f"neo4j_{size}"
+        port = 7687
+        url = f"{scheme}://{host_name}:{port}"
+        user = "neo4j"
+        password = "neo4jpassword"
+        db = Database(url, user, password, f"{DIR_OUTPUT}/{size}")
+        try:
+            db.load_customer(f"file:///{size}/customer.csv")
+            db.index_customer()
 
-    #     terminal_df = pd.read_pickle(f"{DIR_DATA}/test/terminal.pkl")
-    #     db.insert_terminal(terminal_df) # 7513 ms
+            db.load_terminal(f"file:///{size}/terminal.csv")
+            db.index_terminal()
 
-    #     transaction_df = pd.read_pickle(f"{DIR_DATA}/test/transaction.pkl")
-    #     db.insert_transaction(transaction_df)
-
-    #     # db.create_friendship("Alice", "David")
-    #     # db.find_person("Alice")
-    # finally:
-    #     db.close()
-
-    for i in range(100, 301, 100):
-        print(i, "Mbyte dataset")
-        customer_df = pd.read_csv(f"{DIR_DATA}/{i}/customer.csv")
-        terminal_df = pd.read_csv(f"{DIR_DATA}/{i}/terminal.csv")
-        transaction_df = pd.read_csv(f"{DIR_DATA}/{i}/transaction.csv")
-
-        print(customer_df)
-        print(terminal_df)
-        print(transaction_df)
+            db.load_transaction(f"file:///{size}/transaction.csv")
+            db.index_transaction()
+            
+            db.query_1()
+            db.query_2()
+            db.query_3()
+            db.query_4_1()
+            db.query_4_2()
+            db.query_4_3()
+            db.query_5()
+            
+        finally:
+            db.close()
