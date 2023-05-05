@@ -1,5 +1,6 @@
 import os
 from neo4j import GraphDatabase
+import logging
 
 class Database:
 
@@ -10,22 +11,16 @@ class Database:
         if not os.path.exists(self.dir_output):
             os.makedirs(self.dir_output)
 
-        log_file = f"{self.dir_output}/log.txt"
-        if os.path.exists(log_file):
-            os.remove(log_file)
-        self.log_file = open(log_file, "a")
+        self.logger = logging.getLogger(uri)    
+        open(f"{self.dir_output}/log.txt", "w")
+        self.logger.addHandler(logging.FileHandler(f"{self.dir_output}/log.txt"))
 
     def close(self):
         # Don't forget to close the driver connection when you are finished with it
         self.driver.close()
-        
-    def log(self, string):
-        self.log_file.write(f"{string}\n")
-        print(string)
 
     def load_customer(self, path):
         with self.driver.session() as session:
-            # Write transactions allow the driver to handle retries and transient errors
             query =  (
                 "LOAD CSV WITH HEADERS FROM $path AS row "
                 "WITH toInteger(row.CUSTOMER_ID) AS CUSTOMER_ID, "
@@ -43,17 +38,16 @@ class Database:
                 "                    mean_nb_tx_per_day : mean_nb_tx_per_day });"
             )
 
+            self.logger.info(f"Load customer csv from {path}")
             result = session.run(query, path=path)
             summary = result.consume()
             avail = summary.result_available_after
             cons = summary.result_consumed_after
             total_time = avail + cons
-            self.log(f"Load customer csv from {path}")
-            self.log(f"Time: {total_time} ms")
+            self.logger.info(f"Time: {total_time} ms")
 
     def load_terminal(self, path):
         with self.driver.session() as session:
-            # Write transactions allow the driver to handle retries and transient errors
             query = (
                 "LOAD CSV WITH HEADERS FROM $path AS row "
                 "WITH toInteger(row.TERMINAL_ID) AS TERMINAL_ID, "
@@ -65,17 +59,16 @@ class Database:
                 "                    y_terminal_id : y_terminal_id });"
             )
 
+            self.logger.info(f"Load terminal csv from {path}")
             result = session.run(query, path=path)
             summary = result.consume()
             avail = summary.result_available_after
             cons = summary.result_consumed_after
             total_time = avail + cons
-            self.log(f"Load terminal csv from {path}")
-            self.log(f"Time: {total_time} ms")
+            self.logger.info(f"Time: {total_time} ms")
 
     def load_transaction(self, path):
         with self.driver.session() as session:
-            # Write transactions allow the driver to handle retries and transient errors
             query = (
                 "LOAD CSV WITH HEADERS FROM $path AS row "
                 "CALL { "
@@ -98,65 +91,61 @@ class Database:
                 "} IN TRANSACTIONS;"
             )
 
+            self.logger.info(f"Load transaction csv from {path}")
             result = session.run(query, path=path)
             summary = result.consume()
             avail = summary.result_available_after
             cons = summary.result_consumed_after
             total_time = avail + cons
-            self.log(f"Load transaction csv from {path}")
-            self.log(f"Time: {total_time} ms")
+            self.logger.info(f"Time: {total_time} ms")
 
     def index_customer(self):
         with self.driver.session() as session:
-            # Write transactions allow the driver to handle retries and transient errors
             query = (
                 "CREATE INDEX customer_index IF NOT EXISTS "
                 "FOR (c:Customer) ON (c.CUSTOMER_ID);"
             )
 
+            self.logger.info(f"Create index on Customer.CUSTOMER_ID")
             result = session.run(query)
             summary = result.consume()
             avail = summary.result_available_after
             cons = summary.result_consumed_after
             total_time = avail + cons
-            self.log(f"Create index on Customer.CUSTOMER_ID")
-            self.log(f"Time: {total_time} ms")
+            self.logger.info(f"Time: {total_time} ms")
 
     def index_terminal(self):
         with self.driver.session() as session:
-            # Write transactions allow the driver to handle retries and transient errors
             query = (
                 "CREATE INDEX terminal_index IF NOT EXISTS "
                 "FOR (t:Terminal) ON (t.TERMINAL_ID);"
             )
 
+            self.logger.info(f"Create index on Terminal.TERMINAL_ID")
             result = session.run(query)
             summary = result.consume()
             avail = summary.result_available_after
             cons = summary.result_consumed_after
             total_time = avail + cons
-            self.log(f"Create index on Terminal.TERMINAL_ID")
-            self.log(f"Time: {total_time} ms")
+            self.logger.info(f"Time: {total_time} ms")
 
     def index_transaction(self):
         with self.driver.session() as session:
-            # Write transactions allow the driver to handle retries and transient errors
             query = (
                 "CREATE INDEX transaction_index IF NOT EXISTS "
                 "FOR (tr:Transaction) ON (tr.TRANSACTION_ID);"
             )
 
+            self.logger.info(f"Create index on Transaction.TRANSACTION_ID")
             result = session.run(query)
             summary = result.consume()
             avail = summary.result_available_after
             cons = summary.result_consumed_after
             total_time = avail + cons
-            self.log(f"Create index on Transaction.TRANSACTION_ID")
-            self.log(f"Time: {total_time} ms")
+            self.logger.info(f"Time: {total_time} ms")
 
     def query_1(self):
         with self.driver.session() as session:
-            # Write transactions allow the driver to handle retries and transient errors
             query = (
                 "MATCH (c:Customer)-[:MAKE]->(t:Transaction) "
                 "WITH c, t, datetime.truncate('week', t.TX_DATETIME) AS week, "
@@ -169,22 +158,21 @@ class Database:
                 "ORDER BY customer, week;"
             )
 
+            self.logger.info(f"Query 1")
             result = session.run(query)
             values = result.to_df()
             summary = result.consume()
             avail = summary.result_available_after
             cons = summary.result_consumed_after
             total_time = avail + cons
-            self.log(f"Query 1")
-            self.log(f"Time: {total_time} ms")
-            self.log(f"Results:\n{values}")
+            self.logger.info(f"Time: {total_time} ms")
+            self.logger.info(f"Results:\n{values}")
             
             values.to_csv(f"{self.dir_output}/Q1.csv", index=False)
-            self.log(f"Results saved in {self.dir_output}/Q1.csv")
+            self.logger.info(f"Results saved in {self.dir_output}/Q1.csv")
 
     def query_2(self):
         with self.driver.session() as session:
-            # Write transactions allow the driver to handle retries and transient errors
             query = (
                 "MATCH (term:Terminal)-[EXECUTE]->(trans:Transaction) "
                 "WITH term, trans, trans.TX_DATETIME.year AS year, "
@@ -206,22 +194,21 @@ class Database:
                 "ORDER BY terminal;"
             )
 
+            self.logger.info(f"Query 2")
             result = session.run(query)
             values = result.to_df()
             summary = result.consume()
             avail = summary.result_available_after
             cons = summary.result_consumed_after
             total_time = avail + cons
-            self.log(f"Query 2")
-            self.log(f"Time: {total_time} ms")
-            self.log(f"Results:\n{values}")
+            self.logger.info(f"Time: {total_time} ms")
+            self.logger.info(f"Results:\n{values}")
             
             values.to_csv(f"{self.dir_output}/Q2.csv", index=False)
-            self.log(f"Results saved in {self.dir_output}/Q2.csv")
+            self.logger.info(f"Results saved in {self.dir_output}/Q2.csv")
 
     def query_3(self):
         with self.driver.session() as session:
-            # Write transactions allow the driver to handle retries and transient errors
             create_use = (
                 "MATCH (terminal: Terminal)-[execute:EXECUTE]->(transaction: Transaction)<-[make:MAKE]-(c: Customer) "
                 "CALL { "
@@ -230,40 +217,36 @@ class Database:
                 "} IN TRANSACTIONS;"
             )
 
+            self.logger.info(f"Create USE relationship")
             result = session.run(create_use)
             values = result.to_df()
             summary = result.consume()
             avail = summary.result_available_after
             cons = summary.result_consumed_after
             total_time = avail + cons
-            self.log(f"Create USE relationship")
-            self.log(f"Time: {total_time} ms")
-            # self.log(f"Results:\n{values}")
+            self.logger.info(f"Time: {total_time} ms")
             
             query = (
-                "MATCH (user1:Customer)-[:USE]->(t:Terminal) "
-                "WITH user1, COUNT(t) AS count1 "
-                "ORDER BY count1 DESC "
-                "MATCH (user1)-[:USE]->(:Terminal)-[:USE*..3]-(user2:Customer) "
+                "MATCH (user1:Customer)-[:USE*4]-(user2:Customer) "
+                "WHERE id(user1) < id(user2) "
                 "RETURN DISTINCT user1.CUSTOMER_ID, user2.CUSTOMER_ID;"
             )
             
+            self.logger.info(f"Query 3")
             result = session.run(query)
             values = result.to_df()
             summary = result.consume()
             avail = summary.result_available_after
             cons = summary.result_consumed_after
             total_time = avail + cons
-            self.log(f"Query 3")
-            self.log(f"Time: {total_time} ms")
-            self.log(f"Results:\n{values}")
+            self.logger.info(f"Time: {total_time} ms")
+            self.logger.info(f"Results:\n{values}")
             
             values.to_csv(f"{self.dir_output}/Q3.csv", index=False)
-            self.log(f"Results saved in {self.dir_output}/Q3.csv")
+            self.logger.info(f"Results saved in {self.dir_output}/Q3.csv")
 
     def query_4_1(self):
         with self.driver.session() as session:
-            # Write transactions allow the driver to handle retries and transient errors
             query = (
                 "MATCH (t:Transaction) "
                 "CALL { "
@@ -279,17 +262,16 @@ class Database:
                 "} IN TRANSACTIONS;"
             )
             
+            self.logger.info(f"Query 4.1")
             result = session.run(query)
             summary = result.consume()
             avail = summary.result_available_after
             cons = summary.result_consumed_after
             total_time = avail + cons
-            self.log(f"Query 4.1")
-            self.log(f"Time: {total_time} ms")
+            self.logger.info(f"Time: {total_time} ms")
 
     def query_4_2(self):
         with self.driver.session() as session:
-            # Write transactions allow the driver to handle retries and transient errors
             query = (
                 "MATCH (t:Transaction) "
                 "CALL { "
@@ -307,56 +289,53 @@ class Database:
                 "} IN TRANSACTIONS;"
             )
             
+            self.logger.info(f"Query 4.2")
             result = session.run(query)
             summary = result.consume()
             avail = summary.result_available_after
             cons = summary.result_consumed_after
             total_time = avail + cons
-            self.log(f"Query 4.2")
-            self.log(f"Time: {total_time} ms")
+            self.logger.info(f"Time: {total_time} ms")
 
     def query_4_3(self):
         with self.driver.session() as session:
-            # Write transactions allow the driver to handle retries and transient errors
             query = (
                 "MATCH(c:Customer)-[:MAKE]->(tr:Transaction)<-[:EXECUTE]-(t:Terminal) "
-                "CALL { "
-                "    WITH c, tr, t "
-                "    WITH c AS customer, t.TERMINAL_ID as terminal, tr.product AS product, COUNT(tr) AS numb_tr "
-                "    WHERE numb_tr > 3 "
-                "    WITH terminal, product, collect(customer) AS customers "
-                "    WITH DISTINCT customers, terminal "
-                "    UNWIND apoc.coll.combinations(customers, 2) as pair "
-                "    WITH pair[0] as first, pair[1] as second "
-                "    MERGE (first)-[:BUYING_FRIEND]-(second) "
-                "} IN TRANSACTIONS;"
+                "WITH c, tr, t "
+                "WITH c AS customer, t.TERMINAL_ID as terminal, tr.product AS product, COUNT(tr) AS numb_tr "
+                "WHERE numb_tr > 3 "
+                "WITH terminal, product, collect(customer) AS customers "
+                "WITH DISTINCT customers, terminal "
+                "UNWIND apoc.coll.combinations(customers, 2) as pair "
+                "WITH pair[0] as first, pair[1] as second "
+                "MERGE (first)-[:BUYING_FRIEND]-(second);"
             )
             
+            self.logger.info(f"Query 4.3")
             result = session.run(query)
             summary = result.consume()
             avail = summary.result_available_after
             cons = summary.result_consumed_after
             total_time = avail + cons
-            self.log(f"Query 4.3")
-            self.log(f"Time: {total_time} ms")
+            self.logger.info(f"Time: {total_time} ms")
 
     def query_5(self):
         with self.driver.session() as session:
-            # Write transactions allow the driver to handle retries and transient errors
             query = (
-                "MATCH p=(user1:Customer)<-[:BUYING_FRIEND*4]-(user2:Customer) "
-                "RETURN p;"
+                "MATCH (user1:Customer)-[:BUYING_FRIEND*4]-(user2:Customer) "
+                "WHERE id(user1) < id(user2) "
+                "RETURN DISTINCT user1.CUSTOMER_ID, user2.CUSTOMER_ID;"
             )
             
+            self.logger.info(f"Query 5")
             result = session.run(query)
             values = result.to_df()
             summary = result.consume()
             avail = summary.result_available_after
             cons = summary.result_consumed_after
             total_time = avail + cons
-            self.log(f"Query 5")
-            self.log(f"Time: {total_time} ms")
-            self.log(f"Results:\n{values}")
+            self.logger.info(f"Time: {total_time} ms")
+            self.logger.info(f"Results:\n{values}")
 
             values.to_csv(f"{self.dir_output}/Q5.csv", index=False)
-            self.log(f"Results saved in {self.dir_output}/Q5.csv")
+            self.logger.info(f"Results saved in {self.dir_output}/Q5.csv")

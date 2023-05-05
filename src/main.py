@@ -3,15 +3,10 @@ import os
 from database import Database
 from generator import generate_dataset
 
+import logging
+
 DIR_DATA = "./data"
 DIR_OUTPUT = "./output"
-
-if os.path.exists(f"{DIR_OUTPUT}/log.txt"):
-    os.remove(f"{DIR_OUTPUT}/log.txt")
-
-def log(string):
-    open(f"{DIR_OUTPUT}/log.txt", "a").write(f"{string}\n")
-    print(string) 
 
 def generate_all_datasets(force=False):
     dataset_template = {100: (2500,  5000, 365),
@@ -24,7 +19,7 @@ def generate_all_datasets(force=False):
         path = f"{DIR_DATA}/{k}/"
 
         if force or not any([os.path.isfile(f"{path}{name}.csv") for name in file_names]):
-            print(f"Generate {k}Mbyte dataset")
+            logger.info(f"Generate {k}Mbyte dataset")
 
             datasets = dict(zip(file_names,
                                 generate_dataset(n_customers = v[0],
@@ -40,6 +35,17 @@ def generate_all_datasets(force=False):
                 data.to_csv(f"{path}{name}.csv", index=False)
 
 if __name__ == "__main__":
+    logging.basicConfig()
+    logging.root.setLevel(logging.INFO)
+    logging.basicConfig(level=logging.INFO)
+    logger = logging.getLogger("generator")
+    
+    if not os.path.exists(DIR_DATA):
+        os.makedirs(DIR_DATA)
+    open(f"{DIR_DATA}/generator_log.txt", "w")
+
+    logger.addHandler(logging.FileHandler(f"{DIR_DATA}/generator_log.txt"))
+    
     generate_all_datasets()
 
     for size in range(100, 301, 100):
